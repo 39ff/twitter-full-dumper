@@ -79,6 +79,9 @@ for($i = 0; $i < $max_crawl_day; $i++){
                     if (file_exists($generalEntity)) {
                         continue;
                     }
+                    if (in_array(pathinfo($media->media_url, PATHINFO_EXTENSION), ['jpg','png'])) {
+                        $media->media_url = $media->media_url.':orig';
+                    }
                     $to->get($media->media_url, ['sink' => fopen($generalEntity, 'w')]);
                 }
             }
