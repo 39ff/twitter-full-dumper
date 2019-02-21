@@ -70,7 +70,7 @@ for($i = 0; $i < $max_crawl_day; $i++){
             printf("%s\t%s\t%s\r\n",$status->id_str,$q['q'],$status->text);
             fputcsv($stream, [
                 $status->id_str,
-                $status->text,
+                str_replace([PHP_EOL,"\r","\n","\r\n"],'',$status->text),
                 $status->created_at
             ], "\t");
             if (isset($status->entities->media)) {
