@@ -1,8 +1,14 @@
 <?php
 require './vendor/autoload.php';
+require 'TweetParser.php';
+
 $to = new \koulab\UltimateTwitter\Client();
+if(empty($argv[1])){
+    echo 'php run.php screen_name(string) crawlDay(int)'.PHP_EOL;
+    exit;
+}
 $screen_name = $argv[1];
-$max_crawl_day = 60;
+$max_crawl_day = $argv[2] ? $argv[2] : 60;
 
 $save_path = 'dump'.DIRECTORY_SEPARATOR.$screen_name.DIRECTORY_SEPARATOR.time();
 
@@ -24,30 +30,49 @@ for($i = 0; $i < $max_crawl_day; $i++){
     $date->modify('-1 days');
     $q = [
         'q' => 'from:' . $screen_name . ' since:' . $date->format('Y-m-d') . ' until:' . $date->modify('+1 days')->format('Y-m-d'),
-        'count' => '100'
+        'count' => '100',
+        'f'=>'tweets',
+        'vertical'=>'default',
+        'src'=>'typd',
+        'include_available_features'=>'1',
+        'include_entities'=>'0',
+        'max_position'=>'',
+        'reset_error_state'=>'false'
     ];
     $date->modify('-1 days');
     do {
-        var_dump($q);
-        //sleep(1);
         $rs = fopen($save_path . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . time() . '.json', 'w');
-        $response = $to->get('https://api.twitter.com/1.1/search/tweets.json', [
-            'headers' => [
-                'authorization' => 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
-            ],
-            'query' => $q
+        $response = $to->get('https://twitter.com/i/search/timeline', [
+            'query' => $q,
+            'connect_timeout'=>'30',
+            'timeout'=>'30',
+            'read_timeout'=>'30',
+            'headers'=>[
+                'User-Agent'=>'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
+                'Accept-Language'=>'ja-jp'
+            ]
         ]);
         fwrite($rs, $response);
         fclose($rs);
         $json = json_decode($response);
-
-        foreach ($json->statuses as $status) {
-            echo $status->text . ':' . $status->id_str . PHP_EOL;
+        $tweets = TweetParser::parseLegacyTimeline($json->items_html);
+        foreach($tweets as $id) {
+            $to = new \koulab\UltimateTwitter\Client();
+            $single_tweet = $to->get('https://api.twitter.com/1.1/statuses/show.json', [
+                'headers' => [
+                    'authorization' => 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
+                ],
+                'query' => [
+                    'id' => $id
+                ]
+            ]);
+            $status = json_decode($single_tweet);
+            printf("%s\t%s\t%s\r\n",$status->id_str,$q['q'],$status->text);
             fputcsv($stream, [
                 $status->id_str,
                 $status->text,
                 $status->created_at
-            ],"\t");
+            ], "\t");
             if (isset($status->entities->media)) {
                 foreach ($status->entities->media as $media) {
                     $generalEntity = $save_path . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . basename($media->media_url);
@@ -60,20 +85,25 @@ for($i = 0; $i < $max_crawl_day; $i++){
             if (isset($status->extended_entities->media)) {
                 foreach ($status->extended_entities->media as $media) {
                     $generalEntity = $save_path . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . basename($media->media_url);
-                    if (file_exists($generalEntity)) {
-                        continue;
+                    if (!file_exists($generalEntity)) {
+                        $to->get($media->media_url, ['sink' => fopen($generalEntity, 'w')]);
                     }
-                    $to->get($media->media_url, ['sink' => fopen($generalEntity, 'w')]);
+                    if (isset($media->video_info->variants)) {
+                        foreach ($media->video_info->variants as $video) {
+                            $generalEntity = $save_path . DIRECTORY_SEPARATOR . 'media' . DIRECTORY_SEPARATOR . strtok(basename($video->url),'?');
+                            if (!file_exists($generalEntity)) {
+                                $to->get($video->url, ['sink' => fopen($generalEntity, 'w')]);
+                            }
+                        }
+                    }
+
                 }
             }
         }
-        $q['max_id'] = null;
-        if(isset($json->search_metadata->next_results)) {
-            parse_str(parse_url($json->search_metadata->next_results, PHP_URL_QUERY), $query);
-            $q['max_id'] = $query['max_id'];
+
+        if(!empty($json->min_position)){
+            $q['max_position'] = $json->min_position;
         }
 
-
-        sleep(1);
-    } while (!empty($q['max_id']) && count($json->statuses) > 1);
+    } while (!empty($json->min_position) && $json->has_more_items === true && count($json->statuses) > 1);
 }
