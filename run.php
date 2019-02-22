@@ -60,7 +60,6 @@ for($i = 0; $i < $max_crawl_day; $i++){
         ]);
         fwrite($rs, $response);
         fclose($rs);
-        var_dump($response);
         $json = json_decode($response);
         $tweets = TweetParser::parseLegacyTimeline($json->items_html);
         foreach($tweets as $id) {
