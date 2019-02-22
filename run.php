@@ -29,17 +29,18 @@ fputcsv($stream, [
 for($i = 0; $i < $max_crawl_day; $i++){
     $date->modify('-1 days');
     $q = [
-        'q' => 'from:' . $screen_name . ' since:' . $date->format('Y-m-d') . ' until:' . $date->modify('+1 days')->format('Y-m-d'),
+        'q' => 'from:' . $screen_name . ' since:' . $date->format('Y-m-d') . ' until:' . $date->modify('+2 days')->format('Y-m-d'),
         'count' => '100',
         'f'=>'tweets',
         'vertical'=>'default',
         'src'=>'typd',
         'include_available_features'=>'1',
-        'include_entities'=>'0',
+        'include_entities'=>'1',
         'max_position'=>'',
         'reset_error_state'=>'false'
     ];
-    $date->modify('-1 days');
+    var_dump($q['q']);
+    $date->modify('-2 days');
     do {
         $rs = fopen($save_path . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . time() . '.json', 'w');
         $response = $to->get('https://twitter.com/i/search/timeline', [
@@ -48,12 +49,18 @@ for($i = 0; $i < $max_crawl_day; $i++){
             'timeout'=>'30',
             'read_timeout'=>'30',
             'headers'=>[
-                'User-Agent'=>'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36',
-                'Accept-Language'=>'ja-jp'
+                'authority'=>'twitter.com',
+                'x-requested-with'=>'XMLHttpRequest',
+                'x-twitter-active-user'=>'yes',
+                'accept-encoding'=>'gzip, deflate, br',
+                'user-agent'=>'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/72.0.3626.109 Safari/537.36',
+                'accept-language'=>'ja-jp',
+                'accept'=>'application/json, text/javascript, */*; q=0.01',
             ]
         ]);
         fwrite($rs, $response);
         fclose($rs);
+        var_dump($response);
         $json = json_decode($response);
         $tweets = TweetParser::parseLegacyTimeline($json->items_html);
         foreach($tweets as $id) {
