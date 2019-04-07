@@ -2,10 +2,21 @@
 require './vendor/autoload.php';
 require 'TweetParser.php';
 
-$to = new \koulab\UltimateTwitter\Client();
+use koulab\UltimateTwitter\Proxy;
+use koulab\UltimateTwitter\Client;
+$proxy = new Proxy();
+$to = new Client($proxy);
+
 if(empty($argv[1])){
-    echo 'php run.php screen_name(string) crawlDay(int)'.PHP_EOL;
+    echo 'php run.php screen_name(string) crawlDay(int) proxylist.txt(option)'.PHP_EOL;
     exit;
+}
+if(!empty($argv[3])){
+    $proxyList = new SplFileObject($argv[3]);
+    while (!$proxyList->eof()) {
+        $proxy->addAddress(trim($proxyList->fgets()));
+    }
+    printf('loaded %d proxies'.PHP_EOL,count($proxy->getAddresses()));
 }
 $screen_name = $argv[1];
 $max_crawl_day = $argv[2] ? $argv[2] : 60;
@@ -43,7 +54,7 @@ for($i = 0; $i < $max_crawl_day; $i++){
     $date->modify('-2 days');
     do {
         $rs = fopen($save_path . DIRECTORY_SEPARATOR . 'json' . DIRECTORY_SEPARATOR . time() . '.json', 'w');
-        $response = $to->get('https://twitter.com/i/search/timeline', [
+        $params = [
             'query' => $q,
             'connect_timeout'=>'30',
             'timeout'=>'30',
@@ -57,26 +68,25 @@ for($i = 0; $i < $max_crawl_day; $i++){
                 'accept-language'=>'ja-jp',
                 'accept'=>'application/json, text/javascript, */*; q=0.01',
             ]
-        ]);
+        ];
+        $response = $to->get('https://twitter.com/i/search/timeline', $params);
+
         fwrite($rs, $response);
         fclose($rs);
         $json = json_decode($response);
         $tweets = TweetParser::parseLegacyTimeline($json->items_html);
         foreach($tweets as $id) {
-            $to = new \koulab\UltimateTwitter\Client();
             $single_tweet = $to->get('https://api.twitter.com/1.1/statuses/show.json', [
-                'headers' => [
-                    'authorization' => 'Bearer AAAAAAAAAAAAAAAAAAAAANRILgAAAAAAnNwIzUejRCOuH5E6I8xnZz4puTs%3D1Zv7ttfk8LF81IUq16cHjhLTvJu4FA33AGWWjCpTnA'
-                ],
                 'query' => [
-                    'id' => $id
+                    'id' => $id,
+                    'tweet_mode'=>'extended'
                 ]
             ]);
             $status = json_decode($single_tweet);
-            printf("%s\t%s\t%s\r\n",$status->id_str,$q['q'],$status->text);
+            printf("%s\t%s\t%s\r\n",$status->id_str,$q['q'],$status->full_text);
             fputcsv($stream, [
                 $status->id_str,
-                str_replace([PHP_EOL,"\r","\n","\r\n"],'',$status->text),
+                str_replace([PHP_EOL,"\r","\n","\r\n"],'',$status->full_text),
                 $status->created_at
             ], "\t");
             if (isset($status->entities->media)) {

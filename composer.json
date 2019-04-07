@@ -1,5 +1,5 @@
 {
     "require": {
-        "39ff/ultimatetwitter": "^1.0"
+        "39ff/ultimatetwitter": "dev-master"
     }
 }

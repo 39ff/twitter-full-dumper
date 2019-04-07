@@ -1,5 +1,5 @@
 # twitter-full-dumper
-crawl all tweets without api-limit,full user dump(images,videos,tweets) 
+crawl all publicTweets without api-limit,full user dump(images,videos,tweets) 
 
 
 ## Install
@@ -11,10 +11,19 @@ chmod +x composer.phar
 ```
 
 ```text
-Usage: php run.php screen_name maxCrawlDay
+Usage: php run.php screen_name maxCrawlDay proxylist.txt(option)
 Example: php run.php youtube 60
 ```
 
+proxylist.txt format example
+```text
+http://lum-customer-...-zone-static-ip-185.158.103.xx:password@zproxy.lum-superproxy.io:22225
+http://lum-customer-...-zone-static-ip-185.158.103.xx:password@zproxy.lum-superproxy.io:22225
+http://lum-customer-...-zone-static-ip-185.158.103.xx:password@zproxy.lum-superproxy.io:22225
+...
+protocol(http/https/socks5)://username:password@ipAddress:port
+```
+you can buy proxy from [luminati](https://luminati.io/?affiliate=ref_5b8920ee6a9af5c0e0b39d36)
 
 ## Save Directory 
 ```text
