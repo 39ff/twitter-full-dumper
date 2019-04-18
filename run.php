@@ -8,8 +8,11 @@ $proxy = new Proxy();
 $to = new Client($proxy);
 
 if(empty($argv[1])){
-    echo 'php run.php screen_name(string) crawlDay(int) proxylist.txt(option)'.PHP_EOL;
+    echo 'php run.php query(string) crawlDay(int) proxylist.txt(option) projectName(option)'.PHP_EOL;
     exit;
+}
+if(empty($argv[4])){
+    $projectName = 'default-'.date('Y-m-d');
 }
 if(!empty($argv[3])){
     $proxyList = new SplFileObject($argv[3]);
@@ -18,10 +21,10 @@ if(!empty($argv[3])){
     }
     printf('loaded %d proxies'.PHP_EOL,count($proxy->getAddresses()));
 }
-$screen_name = $argv[1];
+$searchQuery = $argv[1];
 $max_crawl_day = $argv[2] ? $argv[2] : 60;
 
-$save_path = 'dump'.DIRECTORY_SEPARATOR.$screen_name.DIRECTORY_SEPARATOR.time();
+$save_path = 'dump'.DIRECTORY_SEPARATOR.$projectName.DIRECTORY_SEPARATOR;
 
 mkdir($save_path,0777,true);
 mkdir($save_path.DIRECTORY_SEPARATOR.'media',0777);
@@ -40,7 +43,7 @@ fputcsv($stream, [
 for($i = 0; $i < $max_crawl_day; $i++){
     $date->modify('-1 days');
     $q = [
-        'q' => 'from:' . $screen_name . ' since:' . $date->format('Y-m-d') . ' until:' . $date->modify('+2 days')->format('Y-m-d'),
+        'q' => $searchQuery . ' since:' . $date->format('Y-m-d') . ' until:' . $date->modify('+2 days')->format('Y-m-d'),
         'count' => '100',
         'f'=>'tweets',
         'vertical'=>'default',
@@ -124,5 +127,5 @@ for($i = 0; $i < $max_crawl_day; $i++){
             $q['max_position'] = $json->min_position;
         }
 
-    } while (!empty($json->min_position) && $json->has_more_items === true && count($json->statuses) > 1);
+    } while (!empty($json->min_position) && $json->has_more_items === true && count($tweets) > 1);
 }

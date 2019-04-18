@@ -11,8 +11,8 @@ chmod +x composer.phar
 ```
 
 ```text
-Usage: php run.php screen_name maxCrawlDay proxylist.txt(option)
-Example: php run.php youtube 60
+Usage: php run.php searchQuery maxCrawlDay proxylist.txt(option)
+Example: php run.php "from:youtube" 60
 ```
 
 proxylist.txt format example
